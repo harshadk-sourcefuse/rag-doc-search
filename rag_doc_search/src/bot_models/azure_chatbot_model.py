@@ -1,5 +1,6 @@
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureOpenAIEmbeddings
+from langchain.llms.openai import AzureOpenAI
+from langchain_openai import AzureChatOpenAI
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.chains import RetrievalQA
 from langchain.chains import ConversationalRetrievalChain
@@ -7,17 +8,19 @@ from langchain.chains import ConversationalRetrievalChain
 from rag_doc_search.src.bot_models.chatbot_model import ChatBotModel
 from rag_doc_search import config
 
+import os
 
-class OpenAIChatBot(ChatBotModel):
+
+class AzureChatBot(ChatBotModel):
     """
-    A class representing the Bedrock ChatBot.
+    A class representing the Azure OpenAI ChatBot.
 
     This class serves as an implementation of a chatbot using the OpenAI.
     """
 
     def __init__(self):
         self.config = config
-        self.embeddings = OpenAIEmbeddings(model=self.config.embeddings_model)
+        self.embeddings = AzureOpenAIEmbeddings(azure_deployment=self.config.embeddings_model,api_version=os.environ.get("AZURE_OPENAI_API_VERSION"))
         self.vector_store = self.config.get_vector_store(embeddings=self.embeddings)
         super().__init__(
             embeddings=self.embeddings,
@@ -32,10 +35,13 @@ class OpenAIChatBot(ChatBotModel):
         Returns:
         An instance of RetrivalQA.
         """
-        cl_llm: BaseLanguageModel = ChatOpenAI(
+        cl_llm: BaseLanguageModel = AzureChatOpenAI(
+            azure_deployment = self.config.llm,
             model_name=self.config.llm,
             temperature=self.config.llm_temperature,
             max_tokens=self.config.llm_max_output_tokens,
+            openai_api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+            openai_api_version=os.environ.get("AZURE_OPENAI_API_VERSION")
         )
         qa = self.create_qa_chain(cl_llm)
         return qa
@@ -54,7 +60,8 @@ class OpenAIChatBot(ChatBotModel):
         An instance of ConversationalRetrievalChain for conversational question-answering.
         """
         stream_manager = self.create_stream_manager(stream_handler, tracing)
-        cl_llm: BaseLanguageModel = ChatOpenAI(
+        cl_llm: BaseLanguageModel = AzureChatOpenAI(
+            azure_deployment=self.config.llm,
             model_name=self.config.llm,
             temperature=self.config.llm_temperature,
             max_tokens=self.config.llm_max_output_tokens,

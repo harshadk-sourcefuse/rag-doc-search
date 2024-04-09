@@ -16,6 +16,7 @@ class Config:
     ```
     Note: Ensure that the necessary environment variables are set before initializing the configuration.
     If AI Provider is OPENAI then ENV OPENAI_API_KEY is required.
+    If AI Provider is AZURE OPENAI then ENV AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT are required and AZURE_OPENAI_API_VERSION is optional, default is '2023-05-15'.
     If AI Provider is BEDROCK then ENV AWS_ACCESS_KEY,AWS_SECRET_ACCESS_KEY are required and AWS_REGION is optional, default is 'us-east-1'.
     If Vector Store Provider is PGVector then PGVECTOR_HOST, PGVECTOR_PORT,  PGVECTOR_DATABASE,  PGVECTOR_USER and PGVECTOR_PASSWORD are required
     """
@@ -58,6 +59,25 @@ class Config:
                 if not os.environ.get("OPENAI_API_KEY"):
                     raise ValueError(
                         "OPENAI_API_KEY environment variable is required for OpenAI"
+                    )
+            
+            case AIProvider.AZURE_OPENAI:
+                if not os.environ.get("AZURE_OPENAI_API_KEY"):
+                    raise ValueError(
+                        "AZURE_OPENAI_API_KEY environment variable is required for Azure OpenAI"
+                    )
+                if not os.environ.get("AZURE_OPENAI_ENDPOINT"):
+                    raise ValueError(
+                        "AZURE_OPENAI_ENDPOINT environment variable is required for Azure OpenAI"
+                    )
+                if not os.environ.get("AZURE_OPENAI_API_VERSION"):
+                    os.environ["AZURE_OPENAI_API_VERSION"] = "2023-05-15"
+                    print( os.environ.get("AZURE_OPENAI_API_VERSION") )
+                    self.logger.warning(
+                        'AZURE_OPENAI_API_VERSION key not found in enviroment variables, so "2023-05-15" will be used as default value.'
+                    )
+                    print(
+                        'AZURE_OPENAI_API_VERSION key not found in enviroment variables, so "2023-05-15" will be used as default value.'
                     )
 
             case AIProvider.BEDROCK:
@@ -234,6 +254,7 @@ class Config:
                         folder_path=self.faiss_vector_embeddings_location,
                         embeddings=embeddings,
                         index_name=self.faiss_index_name,
+                        allow_dangerous_deserialization=True,
                     )
 
                 case VectorStoreProvider.PGVector:

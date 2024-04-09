@@ -19,7 +19,9 @@ class AIProvider(Enum):
 
     Attributes:
     - `OPENAI`: Refers to the OpenAI provider.
+    - `AZURE_OPENAI`: Refers to the Azure OpenAI provider.
     - `BEDROCK`: Refers to the Bedrock provider.
     """
     OPENAI = "OPENAI"
+    AZURE_OPENAI = "AZURE_OPENAI"
     BEDROCK = "BEDROCK"

@@ -41,6 +41,9 @@ def get_bot_instance(ai_provider : AIProvider) -> ChatBotModel:
         case AIProvider.OPENAI:
             from rag_doc_search.src.bot_models.openai_chatbot_model import OpenAIChatBot
             return OpenAIChatBot()
+        case AIProvider.AZURE_OPENAI:
+            from rag_doc_search.src.bot_models.azure_chatbot_model import AzureChatBot
+            return AzureChatBot()
         case _:
             raise ValueError("cannot initiate llm base model for given ai provider")
         
