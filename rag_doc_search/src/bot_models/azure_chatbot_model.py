@@ -67,6 +67,8 @@ class AzureChatBot(ChatBotModel):
             max_tokens=self.config.llm_max_output_tokens,
             streaming=True,
             callback_manager=stream_manager,
+            openai_api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+            openai_api_version=os.environ.get("AZURE_OPENAI_API_VERSION")
         )
         qa = self.create_conversational_qa_chain(cl_llm)
         return qa
