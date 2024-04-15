@@ -6,8 +6,8 @@ This package offers a lightweight and straightforward solution for implementing 
 ## Config Json
 ```
 {
-    "ai_provider": "OPENAI" | "BEDROCK",
-    "embeddings_model": "<embedding model of openai or bedrock as per ai_provider>",
+    "ai_provider": "OPENAI" | "BEDROCK" | "AZURE_OPENAI",
+    "embeddings_model": "<embedding model of openai or bedrock or azure openai as per ai_provider>",
     "llm": "<llm model of openai or bedrock as per ai_provider>",
     "llm_temperature": "<llm model of temperature>",
     "llm_max_output_tokens": "<llm model of mac output token>",

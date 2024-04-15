@@ -184,7 +184,7 @@ class Config:
         self.retriever_search_args_fetch_k = int(search_args.get("fetch_k", 20))
 
         self.retriever_search_args_lambda_mult = float(
-            config_json.get("lambda_mult", 0.5)
+            search_args.get("lambda_mult", 0.5)
         )
         if not (0 <= self.retriever_search_args_lambda_mult <= 1):
             raise ValueError(
@@ -192,7 +192,7 @@ class Config:
             )
 
         self.retriever_search_args_score_threshold = float(
-            config_json.get("score_threshold", 0)
+            search_args.get("score_threshold", 0)
         )
 
     def _validate_and_initialize(self, config_json: dict):
@@ -290,7 +290,7 @@ class Config:
             "k": self.retriever_search_args_k,
             "fetch_k": self.retriever_search_args_fetch_k,
         }
-        match self.vector_store_provider:
+        match self.retriever_search_type:
             case RetrieverSearchType.mmr:
                 if self.retriever_search_args_lambda_mult <= 0:
                     retriever_args["lambda_mult"] = self.retriever_search_args_fetch_k
