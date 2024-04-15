@@ -75,7 +75,7 @@ class ChatBotModel:
             chain_type="stuff",
             retriever=self.vector_store.as_retriever(
                 search_type=self.retriever_args.get("search_type"),
-                search_args=self.retriever_args.get("search_args"),
+                search_kwargs=self.retriever_args.get("search_args"),
             ),
             return_source_documents=True,
             chain_type_kwargs={"prompt": PROMPT},
@@ -110,7 +110,7 @@ class ChatBotModel:
             llm=cl_llm,
             retriever=self.vector_store.as_retriever(
                 search_type=self.retriever_args.get("search_type"),
-                search_args=self.retriever_args.get("search_args"),
+                search_kwargs=self.retriever_args.get("search_args"),
             ),
             # return_source_documents=True,
             memory=memory_chain,
