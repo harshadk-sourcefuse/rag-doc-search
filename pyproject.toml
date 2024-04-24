@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rag-doc-search"
-version = "0.1.5"
+version = "0.1.6"
 description = "This package offers a lightweight and straightforward solution for implementing Retrieval-augmented generation (RAG) functionality with large language models (LLMs)."
 authors = ["Harshad Kadam <harshad.kadam@sourcefuse.com>"]
 readme = "README.md"

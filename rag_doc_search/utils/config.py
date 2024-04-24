@@ -72,11 +72,7 @@ class Config:
                     )
                 if not os.environ.get("AZURE_OPENAI_API_VERSION"):
                     os.environ["AZURE_OPENAI_API_VERSION"] = "2023-05-15"
-                    print( os.environ.get("AZURE_OPENAI_API_VERSION") )
                     self.logger.warning(
-                        'AZURE_OPENAI_API_VERSION key not found in enviroment variables, so "2023-05-15" will be used as default value.'
-                    )
-                    print(
                         'AZURE_OPENAI_API_VERSION key not found in enviroment variables, so "2023-05-15" will be used as default value.'
                     )
 
@@ -90,11 +86,7 @@ class Config:
 
                 if not os.environ.get("AWS_REGION"):
                     os.environ["AWS_REGION"] = "us-east-1"
-                    print( os.environ.get("AWS_REGION") )
                     self.logger.warning(
-                        'AWS_REGION key not found in enviroment variables, so "us-east-1" will be used as default value.'
-                    )
-                    print(
                         'AWS_REGION key not found in enviroment variables, so "us-east-1" will be used as default value.'
                     )
             case _:
@@ -269,7 +261,7 @@ class Config:
                     self.vector_store = PGVector(
                         collection_name="city_bot",
                         connection_string=CONNECTION_STRING,
-                        embedding_function=self.embeddings,
+                        embedding_function=embeddings,
                     )
                     self.vector_store.as_retriever
                 case _:
