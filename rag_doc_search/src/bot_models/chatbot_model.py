@@ -23,12 +23,9 @@ class ChatBotModel:
     This class serves as an implementation of a base chatbot for diff LLM's.
     """
 
-    def __init__(
-        self, embeddings: Embeddings, vector_store: VectorStore, retriever_args: dict
-    ):
+    def __init__(self, embeddings: Embeddings, retriever_args: dict):
         self.prompt_template = DEFAULT_PROMPT_TEMPLATE
-        self.embeddings = (embeddings,)
-        self.vector_store = vector_store
+        self.embeddings = embeddings
         self.logger = get_logger()
         self.retriever_args = retriever_args
         self.logger.info(
@@ -56,34 +53,51 @@ class ChatBotModel:
 
         return stream_manager
 
-    def create_qa_chain(self, cl_llm: BaseLanguageModel) -> RetrievalQA:
+    def create_qa_chain(
+        self,
+        cl_llm: BaseLanguageModel,
+        vector_store: VectorStore,
+        prompt_template: PromptTemplate = None,
+    ) -> RetrievalQA:
         """
         Creates and returns an instance of RetrievalQA for question-answering using a provided language model.
 
         Parameters:
         - `cl_llm`: An instance of LanguageModel such as OpenAI or Bedrock Model.
+        - vector_store (VectorStore): The vector store used for retrieving documents.
+        - prompt_template (PromptTemplate, optional): Custom prompt template. 
+            If not provided, it will use DEFAULT_PROMPT_TEMPLATE from rag_doc_search.src.prompt_templates.default_prompt_templates.
 
         Returns:
         An instance of RetrievalQA.
         """
-        PROMPT = PromptTemplate(
-            template=self.prompt_template, input_variables=["context", "question"]
+        prompt_template = (
+            prompt_template
+            if prompt_template
+            else PromptTemplate(
+                template=self.prompt_template, input_variables=["context", "question"]
+            )
         )
 
         qa = RetrievalQA.from_chain_type(
             llm=cl_llm,
             chain_type="stuff",
-            retriever=self.vector_store.as_retriever(
+            retriever=vector_store.as_retriever(
                 search_type=self.retriever_args.get("search_type"),
                 search_kwargs=self.retriever_args.get("search_args"),
             ),
             return_source_documents=True,
-            chain_type_kwargs={"prompt": PROMPT},
+            chain_type_kwargs={
+                "prompt": prompt_template,
+            },
         )
         return qa
 
     def create_conversational_qa_chain(
-        self, cl_llm: BaseLanguageModel
+        self,
+        cl_llm: BaseLanguageModel,
+        vector_store: VectorStore,
+        prompt_template: PromptTemplate = None,
     ) -> ConversationalRetrievalChain:
         """
         Creates and returns an instance of ConversationalRetrievalChain for handling conversational question-answering
@@ -91,6 +105,9 @@ class ChatBotModel:
 
         Parameters:
         - `cl_llm`: An instance of LanguageModel such as OpenAI or Bedrock Model.
+        - vector_store (VectorStore): The vector store used for retrieving documents.
+        - prompt_template (PromptTemplate, optional): Custom prompt template. 
+            If not provided, it will use DEFAULT_PROMPT_TEMPLATE from rag_doc_search.src.prompt_templates.default_prompt_templates.
 
         Returns:
         An instance of ConversationalRetrievalChain.
@@ -105,10 +122,15 @@ class ChatBotModel:
 
         # the condense prompt for Claude
         condense_prompt = PromptTemplate.from_template(DEFAULT_CHAT_HISTORY_PROMPT)
+        prompt_template = (
+            prompt_template
+            if prompt_template
+            else PromptTemplate.from_template(self.prompt_template)
+        )
 
         qa = ConversationalRetrievalChain.from_llm(
             llm=cl_llm,
-            retriever=self.vector_store.as_retriever(
+            retriever=vector_store.as_retriever(
                 search_type=self.retriever_args.get("search_type"),
                 search_kwargs=self.retriever_args.get("search_args"),
             ),
@@ -120,7 +142,5 @@ class ChatBotModel:
         )
 
         # the LLMChain prompt to get the answer. the ConversationalRetrievalChange does not expose this parameter in the constructor
-        qa.combine_docs_chain.llm_chain.prompt = PromptTemplate.from_template(
-            self.prompt_template
-        )
+        qa.combine_docs_chain.llm_chain.prompt = prompt_template
         return qa

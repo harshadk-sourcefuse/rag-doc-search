@@ -60,7 +60,7 @@ class Config:
                     raise ValueError(
                         "OPENAI_API_KEY environment variable is required for OpenAI"
                     )
-            
+
             case AIProvider.AZURE_OPENAI:
                 if not os.environ.get("AZURE_OPENAI_API_KEY"):
                     raise ValueError(
@@ -226,47 +226,58 @@ class Config:
 
         self.vector_store = None
 
-    def get_vector_store(self, embeddings: Embeddings) -> VectorStore:
+    def get_vector_store(
+        self, embeddings: Embeddings, index_or_collection_name: str = None
+    ) -> VectorStore:
         """
         Uses the vector store provider to create a requested provider using the required information for that vector store such as FAISS and PgVector.
 
         Parameters:
         - `embeddings`: An instance of the Embeddings class.
-
+        - index_or_collection_name (str, optional): Collection or index name for which vector store 
+        needs to be initialized. If not provided, it will be used from the one which is provided in config.
         Returns:
         A VectorStore instance based on the specified provider.
 
         Raises:
         - `ValueError`: If the specified vector store provider is not supported.
         """
-        if self.vector_store is None:
-            match self.vector_store_provider:
-                case VectorStoreProvider.FAISS:
-                    self.vector_store = FAISS.load_local(
-                        folder_path=self.faiss_vector_embeddings_location,
-                        embeddings=embeddings,
-                        index_name=self.faiss_index_name,
-                        allow_dangerous_deserialization=True,
-                    )
+        match self.vector_store_provider:
+            case VectorStoreProvider.FAISS:
+                index_name = (
+                    index_or_collection_name
+                    if index_or_collection_name
+                    else self.faiss_index_name
+                )
+                vector_store = FAISS.load_local(
+                    folder_path=self.faiss_vector_embeddings_location,
+                    embeddings=embeddings,
+                    index_name=index_name,
+                    allow_dangerous_deserialization=True,
+                )
 
-                case VectorStoreProvider.PGVector:
-                    CONNECTION_STRING = PGVector.connection_string_from_db_params(
-                        driver="psycopg2",
-                        host=os.environ.get("PGVECTOR_HOST", "localhost"),
-                        port=int(os.environ.get("PGVECTOR_PORT", "5432")),
-                        database=os.environ.get("PGVECTOR_DATABASE", "postgres"),
-                        user=os.environ.get("PGVECTOR_USER", "postgres"),
-                        password=os.environ.get("PGVECTOR_PASSWORD", "postgres"),
-                    )
-                    self.vector_store = PGVector(
-                        collection_name="city_bot",
-                        connection_string=CONNECTION_STRING,
-                        embedding_function=embeddings,
-                    )
-                    self.vector_store.as_retriever
-                case _:
-                    self.logger.warning("Default case VectorStoreProvider")
-        return self.vector_store
+            case VectorStoreProvider.PGVector:
+                collection_name = (
+                    index_or_collection_name
+                    if index_or_collection_name
+                    else self.collection_name
+                )
+                CONNECTION_STRING = PGVector.connection_string_from_db_params(
+                    driver="psycopg2",
+                    host=os.environ.get("PGVECTOR_HOST", "localhost"),
+                    port=int(os.environ.get("PGVECTOR_PORT", "5432")),
+                    database=os.environ.get("PGVECTOR_DATABASE", "postgres"),
+                    user=os.environ.get("PGVECTOR_USER", "postgres"),
+                    password=os.environ.get("PGVECTOR_PASSWORD", "postgres"),
+                )
+                vector_store = PGVector(
+                    collection_name=collection_name,
+                    connection_string=CONNECTION_STRING,
+                    embedding_function=embeddings,
+                )
+            case _:
+                self.logger.warning("Default case VectorStoreProvider")
+        return vector_store
 
     def get_retriever_args(self) -> dict:
         """
@@ -287,9 +298,9 @@ class Config:
                 if self.retriever_search_args_lambda_mult <= 0:
                     retriever_args["lambda_mult"] = self.retriever_search_args_fetch_k
             case RetrieverSearchType.similarity_score_threshold:
-                retriever_args[
-                    "score_threshold"
-                ] = self.retriever_search_args_score_threshold
+                retriever_args["score_threshold"] = (
+                    self.retriever_search_args_score_threshold
+                )
 
         return {
             "search_type": self.retriever_search_type.value,
