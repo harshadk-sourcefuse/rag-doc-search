@@ -23,8 +23,6 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 ## Checklist:
 
 - [ ] Performed a self-review of my own code
-- [ ] npm test passes on your machine
 - [ ] New tests added or existing tests modified to cover all changes
 - [ ] Code conforms with the style guide
-- [ ] API Documentation in code was updated
 - [ ] Any dependent changes have been merged and published in downstream modules
