@@ -16,7 +16,7 @@ class AzureChatBot(ChatBotModel):
     """
     A class representing the Azure OpenAI ChatBot.
 
-    This class serves as an implementation of a chatbot using the OpenAI.
+    This class serves as an implementation of a chatbot using the Azure OpenAI.
     """
 
     def __init__(self):
@@ -25,26 +25,36 @@ class AzureChatBot(ChatBotModel):
             azure_deployment=self.config.embeddings_model,
             api_version=os.environ.get("AZURE_OPENAI_API_VERSION"),
         )
-        super().__init__(
-            embeddings=self.embeddings,
-            retriever_args=self.config.get_retriever_args(),
-        )
+        super().__init__(embeddings=self.embeddings)
 
     def create_qa_instance(
         self,
         index_or_collection_name: str = None,
         prompt_template: PromptTemplate = None,
+        retriever_args: dict = None,
     ) -> RetrievalQA:
         """
-        Creates and returns an instance of RetrivalQA using OpenAI Language Model.
+        Creates and returns an instance of RetrivalQA using Azure OpenAI Language Model.
 
         Args:
-        - index_or_collection_name (str, optional): Collection or index name for which vector store 
+        - index_or_collection_name (str, optional): Collection or index name for which vector store
         needs to be initialized.
         - prompt_template (PromptTemplate, optional): Custom prompt template.
+         - retriever_args (dict, optional): A dictionary containing configuration settings for retrievers.
 
-        Returns:
-        An instance of RetrivalQA.
+         Example:
+             retriever_args = {
+                 "search_type": "similarity" | "mmr" | "similarity_score_threshold"
+                 "search_args": {
+                     "k": 10,
+                     "fetch_k": 500,
+                     "lambda_mult": 0.1,
+                     "score_threshold": 0.1
+                 }
+             }
+
+         Returns:
+         An instance of RetrievalQA.
         """
         cl_llm: BaseLanguageModel = AzureChatOpenAI(
             azure_deployment=self.config.llm,
@@ -58,7 +68,13 @@ class AzureChatBot(ChatBotModel):
             embeddings=self.embeddings,
             index_or_collection_name=index_or_collection_name,
         )
-        qa = self.create_qa_chain(cl_llm, vector_store, prompt_template)
+        retriever_args: dict = (
+            self.config.validate_and_get_retriever_arguments(retriever_args)
+            if retriever_args
+            else self.config.retriever_args
+        )
+
+        qa = self.create_qa_chain(cl_llm, vector_store, prompt_template, retriever_args)
         return qa
 
     def create_conversational_qa_instance(
@@ -66,17 +82,30 @@ class AzureChatBot(ChatBotModel):
         stream_handler,
         index_or_collection_name: str = None,
         prompt_template: PromptTemplate = None,
+        retriever_args: dict = None,
         tracing: bool = False,
     ) -> ConversationalRetrievalChain:
         """
-        Creates and returns an instance of ConversationalRetrievalChain for conversational question-answering using OpenAI Language Model.
+        Creates and returns an instance of ConversationalRetrievalChain for conversational question-answering using Azure OpenAI Language Model.
 
         Parameters:
         - `stream_handler`: An instance of StreamingLLMCallbackHandler used for handling streaming callbacks.
-        - index_or_collection_name (str, optional): Collection or index name for which vector store 
-        needs to be initialized. 
-        - prompt_template (PromptTemplate, optional): Custom prompt template. 
+        - index_or_collection_name (str, optional): Collection or index name for which vector store
+        needs to be initialized.
+        - prompt_template (PromptTemplate, optional): Custom prompt template.
+        - retriever_args (dict, optional): A dictionary containing configuration settings for retrievers.
         - `tracing`: A boolean indicating whether tracing is enabled. Default is False.
+
+        Example:
+            retriever_args = {
+                "search_type": "similarity" | "mmr" | "similarity_score_threshold"
+                "search_args": {
+                    "k": 10,
+                    "fetch_k": 500,
+                    "lambda_mult": 0.1,
+                    "score_threshold": 0.1
+                }
+            }
 
         Returns:
         An instance of ConversationalRetrievalChain for conversational question-answering.
@@ -96,5 +125,13 @@ class AzureChatBot(ChatBotModel):
             embeddings=self.embeddings,
             index_or_collection_name=index_or_collection_name,
         )
-        qa = self.create_conversational_qa_chain(cl_llm, vector_store, prompt_template)
+        retriever_args: dict = (
+            self.config.validate_and_get_retriever_arguments(retriever_args)
+            if retriever_args
+            else self.config.retriever_args
+        )
+
+        qa = self.create_conversational_qa_chain(
+            cl_llm, vector_store, prompt_template, retriever_args
+        )
         return qa

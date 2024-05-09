@@ -22,13 +22,13 @@ class OpenAIChatBot(ChatBotModel):
         self.embeddings = OpenAIEmbeddings(model=self.config.embeddings_model)
         super().__init__(
             embeddings=self.embeddings,
-            retriever_args=self.config.get_retriever_args(),
         )
 
     def create_qa_instance(
         self,
         index_or_collection_name: str = None,
         prompt_template: PromptTemplate = None,
+        retriever_args: dict = None,
     ) -> RetrievalQA:
         """
         Creates and returns an instance of RetrivalQA using OpenAI Language Model.
@@ -37,9 +37,21 @@ class OpenAIChatBot(ChatBotModel):
         - index_or_collection_name (str, optional): Collection or index name for which vector store
         needs to be initialized.
         - prompt_template (PromptTemplate, optional): Custom prompt template.
+        - retriever_args (dict, optional): A dictionary containing configuration settings for retrievers.
+
+        Example:
+            retriever_args = {
+                "search_type": "similarity" | "mmr" | "similarity_score_threshold"
+                "search_args": {
+                    "k": 10,
+                    "fetch_k": 500,
+                    "lambda_mult": 0.1,
+                    "score_threshold": 0.1
+                }
+            }
 
         Returns:
-        An instance of RetrivalQA.
+        An instance of RetrievalQA.
         """
         cl_llm: BaseLanguageModel = ChatOpenAI(
             model_name=self.config.llm,
@@ -50,7 +62,13 @@ class OpenAIChatBot(ChatBotModel):
             embeddings=self.embeddings,
             index_or_collection_name=index_or_collection_name,
         )
-        qa = self.create_qa_chain(cl_llm, vector_store, prompt_template)
+        retriever_args: dict = (
+            self.config.validate_and_get_retriever_arguments(retriever_args)
+            if retriever_args
+            else self.config.retriever_args
+        )
+
+        qa = self.create_qa_chain(cl_llm, vector_store, prompt_template, retriever_args)
         return qa
 
     def create_conversational_qa_instance(
@@ -58,6 +76,7 @@ class OpenAIChatBot(ChatBotModel):
         stream_handler: StreamingLLMCallbackHandler,
         index_or_collection_name: str = None,
         prompt_template: PromptTemplate = None,
+        retriever_args: dict = None,
         tracing: bool = False,
     ) -> ConversationalRetrievalChain:
         """
@@ -68,7 +87,19 @@ class OpenAIChatBot(ChatBotModel):
         - index_or_collection_name (str, optional): Collection or index name for which vector store
         needs to be initialized.
         - prompt_template (PromptTemplate, optional): Custom prompt template.
+        - retriever_args (dict, optional): A dictionary containing configuration settings for retrievers.
         - `tracing`: A boolean indicating whether tracing is enabled. Default is False.
+
+        Example:
+            retriever_args = {
+                "search_type": "similarity" | "mmr" | "similarity_score_threshold"
+                "search_args": {
+                    "k": 10,
+                    "fetch_k": 500,
+                    "lambda_mult": 0.1,
+                    "score_threshold": 0.1
+                }
+            }
 
         Returns:
         An instance of ConversationalRetrievalChain for conversational question-answering.
@@ -85,5 +116,13 @@ class OpenAIChatBot(ChatBotModel):
             embeddings=self.embeddings,
             index_or_collection_name=index_or_collection_name,
         )
-        qa = self.create_conversational_qa_chain(cl_llm, vector_store, prompt_template)
+        retriever_args: dict = (
+            self.config.validate_and_get_retriever_arguments(retriever_args)
+            if retriever_args
+            else self.config.retriever_args
+        )
+
+        qa = self.create_conversational_qa_chain(
+            cl_llm, vector_store, prompt_template, retriever_args
+        )
         return qa

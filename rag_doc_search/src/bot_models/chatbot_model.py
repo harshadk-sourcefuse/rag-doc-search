@@ -1,11 +1,11 @@
 from langchain.prompts import PromptTemplate
-from langchain.chains import ConversationalRetrievalChain
+from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.callbacks.manager import AsyncCallbackManager
 from langchain.callbacks.tracers import LangChainTracer
 from langchain.schema.vectorstore import VectorStore
 from langchain.schema.embeddings import Embeddings
-from langchain.chains import RetrievalQA
+from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.schema.language_model import BaseLanguageModel
 
 from rag_doc_search.src.prompt_templates.default_prompt_templates import (
@@ -23,14 +23,10 @@ class ChatBotModel:
     This class serves as an implementation of a base chatbot for diff LLM's.
     """
 
-    def __init__(self, embeddings: Embeddings, retriever_args: dict):
+    def __init__(self, embeddings: Embeddings):
         self.prompt_template = DEFAULT_PROMPT_TEMPLATE
         self.embeddings = embeddings
         self.logger = get_logger()
-        self.retriever_args = retriever_args
-        self.logger.info(
-            f"search_type: {self.retriever_args.get('search_type')} \n search_args: {self.retriever_args.get('search_args')}"
-        )
 
     def create_stream_manager(self, stream_handler, tracing) -> AsyncCallbackManager:
         """
@@ -58,6 +54,7 @@ class ChatBotModel:
         cl_llm: BaseLanguageModel,
         vector_store: VectorStore,
         prompt_template: PromptTemplate = None,
+        retriever_args: dict = None,
     ) -> RetrievalQA:
         """
         Creates and returns an instance of RetrievalQA for question-answering using a provided language model.
@@ -79,17 +76,21 @@ class ChatBotModel:
             )
         )
 
+        self.logger.info(
+            f"search_type: {retriever_args.get('search_type')} \n search_args: {retriever_args.get('search_args')}"
+        )
+
         qa = RetrievalQA.from_chain_type(
             llm=cl_llm,
             chain_type="stuff",
             retriever=vector_store.as_retriever(
-                search_type=self.retriever_args.get("search_type"),
-                search_kwargs=self.retriever_args.get("search_args"),
+                search_type=retriever_args.get("search_type"),
+                search_kwargs=retriever_args.get("search_args"),
             ),
             return_source_documents=True,
             chain_type_kwargs={
                 "prompt": prompt_template,
-            },
+            }
         )
         return qa
 
@@ -98,6 +99,7 @@ class ChatBotModel:
         cl_llm: BaseLanguageModel,
         vector_store: VectorStore,
         prompt_template: PromptTemplate = None,
+        retriever_args: dict = None,
     ) -> ConversationalRetrievalChain:
         """
         Creates and returns an instance of ConversationalRetrievalChain for handling conversational question-answering
@@ -128,11 +130,14 @@ class ChatBotModel:
             else PromptTemplate.from_template(self.prompt_template)
         )
 
+        self.logger.info(
+            f"search_type: {retriever_args.get('search_type')} \n search_args: {retriever_args.get('search_args')}"
+        )
         qa = ConversationalRetrievalChain.from_llm(
             llm=cl_llm,
             retriever=vector_store.as_retriever(
-                search_type=self.retriever_args.get("search_type"),
-                search_kwargs=self.retriever_args.get("search_args"),
+                search_type=retriever_args.get("search_type"),
+                search_kwargs=retriever_args.get("search_args"),
             ),
             # return_source_documents=True,
             memory=memory_chain,
