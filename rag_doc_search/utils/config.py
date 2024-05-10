@@ -60,7 +60,7 @@ class Config:
                     raise ValueError(
                         "OPENAI_API_KEY environment variable is required for OpenAI"
                     )
-            
+
             case AIProvider.AZURE_OPENAI:
                 if not os.environ.get("AZURE_OPENAI_API_KEY"):
                     raise ValueError(
@@ -149,22 +149,24 @@ class Config:
             case _:
                 self.logger.warning("Default case VectorStoreProvider")
 
-    def _validate_and_initialize_retriever_arguments(self, config_json: dict):
+    def validate_and_get_retriever_arguments(self, retriever_args: dict):
         """
         Validates and initializes the retriever arguments based on the configuration JSON.
         Also validates and initializes retriever config properties.
 
         Parameters:
-        - `config_json`: A dictionary containing configuration settings.
+        - `retriever_args`: A dictionary containing configuration settings for retrievers.
+
+        Returns:
+        A dictionary containing retriever configuration properties which can be used in vector store retriever.
 
         Raises:
         - `ValueError`: If the configuration is invalid or missing required properties.
         """
 
-        retriever_args = config_json.get("retriever", {})
         search_type_str = retriever_args.get("search_type", "")
         try:
-            self.retriever_search_type = RetrieverSearchType(search_type_str)
+            retriever_search_type = RetrieverSearchType(search_type_str)
         except ValueError:
             raise ValueError(
                 f"Invalid value for 'search_type'. Expected values: {', '.join(member.value for member in RetrieverSearchType)}"
@@ -172,20 +174,28 @@ class Config:
 
         search_args = retriever_args.get("search_args", {})
 
-        self.retriever_search_args_k = int(search_args.get("k", 4))
-        self.retriever_search_args_fetch_k = int(search_args.get("fetch_k", 20))
-
-        self.retriever_search_args_lambda_mult = float(
-            search_args.get("lambda_mult", 0.5)
-        )
-        if not (0 <= self.retriever_search_args_lambda_mult <= 1):
+        retriever_search_args_lambda_mult = float(search_args.get("lambda_mult", 0.5))
+        if not (0 <= retriever_search_args_lambda_mult <= 1):
             raise ValueError(
                 "Invalid lambda_mult value in config -> retriever -> search args"
             )
+        retriever_args = {
+            "k": int(search_args.get("k", 4)),
+            "fetch_k": int(search_args.get("fetch_k", 20)),
+        }
+        match retriever_search_type:
+            case RetrieverSearchType.mmr:
+                if retriever_search_args_lambda_mult > 0:
+                    retriever_args["lambda_mult"] = retriever_search_args_lambda_mult
+            case RetrieverSearchType.similarity_score_threshold:
+                retriever_args["score_threshold"] = float(
+                    search_args.get("score_threshold", 0)
+                )
 
-        self.retriever_search_args_score_threshold = float(
-            search_args.get("score_threshold", 0)
-        )
+        return {
+            "search_type": retriever_search_type.value,
+            "search_args": retriever_args,
+        }
 
     def _validate_and_initialize(self, config_json: dict):
         """
@@ -202,7 +212,8 @@ class Config:
 
         self._validate_and_initialize_ai_provider(config_json)
         self._validate_and_initialize_vector_store_provider(config_json)
-        self._validate_and_initialize_retriever_arguments(config_json)
+        # self._validate_and_initialize_retriever_arguments(config_json)
+        self.retriever_args = self.validate_and_get_retriever_arguments(config_json.get("retriever", {}))
 
         # Validate Embeddings model, llm, llm_temperature, and llm_max_output_tokens
         self.embeddings_model = config_json.get("embeddings_model", "")
@@ -226,72 +237,56 @@ class Config:
 
         self.vector_store = None
 
-    def get_vector_store(self, embeddings: Embeddings) -> VectorStore:
+    def get_vector_store(
+        self, embeddings: Embeddings, index_or_collection_name: str = None
+    ) -> VectorStore:
         """
         Uses the vector store provider to create a requested provider using the required information for that vector store such as FAISS and PgVector.
 
         Parameters:
         - `embeddings`: An instance of the Embeddings class.
-
+        - index_or_collection_name (str, optional): Collection or index name for which vector store
+        needs to be initialized. If not provided, it will be used from the one which is provided in config.
         Returns:
         A VectorStore instance based on the specified provider.
 
         Raises:
         - `ValueError`: If the specified vector store provider is not supported.
         """
-        if self.vector_store is None:
-            match self.vector_store_provider:
-                case VectorStoreProvider.FAISS:
-                    self.vector_store = FAISS.load_local(
-                        folder_path=self.faiss_vector_embeddings_location,
-                        embeddings=embeddings,
-                        index_name=self.faiss_index_name,
-                        allow_dangerous_deserialization=True,
-                    )
+        match self.vector_store_provider:
+            case VectorStoreProvider.FAISS:
+                index_name = (
+                    index_or_collection_name
+                    if index_or_collection_name
+                    else self.faiss_index_name
+                )
+                vector_store = FAISS.load_local(
+                    folder_path=self.faiss_vector_embeddings_location,
+                    embeddings=embeddings,
+                    index_name=index_name,
+                    allow_dangerous_deserialization=True,
+                )
 
-                case VectorStoreProvider.PGVector:
-                    CONNECTION_STRING = PGVector.connection_string_from_db_params(
-                        driver="psycopg2",
-                        host=os.environ.get("PGVECTOR_HOST", "localhost"),
-                        port=int(os.environ.get("PGVECTOR_PORT", "5432")),
-                        database=os.environ.get("PGVECTOR_DATABASE", "postgres"),
-                        user=os.environ.get("PGVECTOR_USER", "postgres"),
-                        password=os.environ.get("PGVECTOR_PASSWORD", "postgres"),
-                    )
-                    self.vector_store = PGVector(
-                        collection_name="city_bot",
-                        connection_string=CONNECTION_STRING,
-                        embedding_function=embeddings,
-                    )
-                    self.vector_store.as_retriever
-                case _:
-                    self.logger.warning("Default case VectorStoreProvider")
-        return self.vector_store
+            case VectorStoreProvider.PGVector:
+                collection_name = (
+                    index_or_collection_name
+                    if index_or_collection_name
+                    else self.collection_name
+                )
+                CONNECTION_STRING = PGVector.connection_string_from_db_params(
+                    driver="psycopg2",
+                    host=os.environ.get("PGVECTOR_HOST", "localhost"),
+                    port=int(os.environ.get("PGVECTOR_PORT", "5432")),
+                    database=os.environ.get("PGVECTOR_DATABASE", "postgres"),
+                    user=os.environ.get("PGVECTOR_USER", "postgres"),
+                    password=os.environ.get("PGVECTOR_PASSWORD", "postgres"),
+                )
+                vector_store = PGVector(
+                    collection_name=collection_name,
+                    connection_string=CONNECTION_STRING,
+                    embedding_function=embeddings,
+                )
+            case _:
+                self.logger.warning("Default case VectorStoreProvider")
+        return vector_store
 
-    def get_retriever_args(self) -> dict:
-        """
-        Retrieves retriever information from the configuration.
-
-        Returns:
-        A dictionary containing retriever configuration properties which can be used in vector store retriever.
-
-        Raises:
-        - `ValueError`: If the retriever configuration is invalid or missing required properties.
-        """
-        retriever_args = {
-            "k": self.retriever_search_args_k,
-            "fetch_k": self.retriever_search_args_fetch_k,
-        }
-        match self.retriever_search_type:
-            case RetrieverSearchType.mmr:
-                if self.retriever_search_args_lambda_mult <= 0:
-                    retriever_args["lambda_mult"] = self.retriever_search_args_fetch_k
-            case RetrieverSearchType.similarity_score_threshold:
-                retriever_args[
-                    "score_threshold"
-                ] = self.retriever_search_args_score_threshold
-
-        return {
-            "search_type": self.retriever_search_type.value,
-            "search_args": retriever_args,
-        }

@@ -1,11 +1,11 @@
 from langchain.prompts import PromptTemplate
-from langchain.chains import ConversationalRetrievalChain
+from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.callbacks.manager import AsyncCallbackManager
 from langchain.callbacks.tracers import LangChainTracer
 from langchain.schema.vectorstore import VectorStore
 from langchain.schema.embeddings import Embeddings
-from langchain.chains import RetrievalQA
+from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.schema.language_model import BaseLanguageModel
 
 from rag_doc_search.src.prompt_templates.default_prompt_templates import (
@@ -23,17 +23,10 @@ class ChatBotModel:
     This class serves as an implementation of a base chatbot for diff LLM's.
     """
 
-    def __init__(
-        self, embeddings: Embeddings, vector_store: VectorStore, retriever_args: dict
-    ):
+    def __init__(self, embeddings: Embeddings):
         self.prompt_template = DEFAULT_PROMPT_TEMPLATE
-        self.embeddings = (embeddings,)
-        self.vector_store = vector_store
+        self.embeddings = embeddings
         self.logger = get_logger()
-        self.retriever_args = retriever_args
-        self.logger.info(
-            f"search_type: {self.retriever_args.get('search_type')} \n search_args: {self.retriever_args.get('search_args')}"
-        )
 
     def create_stream_manager(self, stream_handler, tracing) -> AsyncCallbackManager:
         """
@@ -56,34 +49,57 @@ class ChatBotModel:
 
         return stream_manager
 
-    def create_qa_chain(self, cl_llm: BaseLanguageModel) -> RetrievalQA:
+    def create_qa_chain(
+        self,
+        cl_llm: BaseLanguageModel,
+        vector_store: VectorStore,
+        prompt_template: PromptTemplate = None,
+        retriever_args: dict = None,
+    ) -> RetrievalQA:
         """
         Creates and returns an instance of RetrievalQA for question-answering using a provided language model.
 
         Parameters:
         - `cl_llm`: An instance of LanguageModel such as OpenAI or Bedrock Model.
+        - vector_store (VectorStore): The vector store used for retrieving documents.
+        - prompt_template (PromptTemplate, optional): Custom prompt template. 
+            If not provided, it will use DEFAULT_PROMPT_TEMPLATE from rag_doc_search.src.prompt_templates.default_prompt_templates.
 
         Returns:
         An instance of RetrievalQA.
         """
-        PROMPT = PromptTemplate(
-            template=self.prompt_template, input_variables=["context", "question"]
+        prompt_template = (
+            prompt_template
+            if prompt_template
+            else PromptTemplate(
+                template=self.prompt_template, input_variables=["context", "question"]
+            )
+        )
+
+        self.logger.info(
+            f"search_type: {retriever_args.get('search_type')} \n search_args: {retriever_args.get('search_args')}"
         )
 
         qa = RetrievalQA.from_chain_type(
             llm=cl_llm,
             chain_type="stuff",
-            retriever=self.vector_store.as_retriever(
-                search_type=self.retriever_args.get("search_type"),
-                search_kwargs=self.retriever_args.get("search_args"),
+            retriever=vector_store.as_retriever(
+                search_type=retriever_args.get("search_type"),
+                search_kwargs=retriever_args.get("search_args"),
             ),
             return_source_documents=True,
-            chain_type_kwargs={"prompt": PROMPT},
+            chain_type_kwargs={
+                "prompt": prompt_template,
+            }
         )
         return qa
 
     def create_conversational_qa_chain(
-        self, cl_llm: BaseLanguageModel
+        self,
+        cl_llm: BaseLanguageModel,
+        vector_store: VectorStore,
+        prompt_template: PromptTemplate = None,
+        retriever_args: dict = None,
     ) -> ConversationalRetrievalChain:
         """
         Creates and returns an instance of ConversationalRetrievalChain for handling conversational question-answering
@@ -91,6 +107,9 @@ class ChatBotModel:
 
         Parameters:
         - `cl_llm`: An instance of LanguageModel such as OpenAI or Bedrock Model.
+        - vector_store (VectorStore): The vector store used for retrieving documents.
+        - prompt_template (PromptTemplate, optional): Custom prompt template. 
+            If not provided, it will use DEFAULT_PROMPT_TEMPLATE from rag_doc_search.src.prompt_templates.default_prompt_templates.
 
         Returns:
         An instance of ConversationalRetrievalChain.
@@ -105,12 +124,20 @@ class ChatBotModel:
 
         # the condense prompt for Claude
         condense_prompt = PromptTemplate.from_template(DEFAULT_CHAT_HISTORY_PROMPT)
+        prompt_template = (
+            prompt_template
+            if prompt_template
+            else PromptTemplate.from_template(self.prompt_template)
+        )
 
+        self.logger.info(
+            f"search_type: {retriever_args.get('search_type')} \n search_args: {retriever_args.get('search_args')}"
+        )
         qa = ConversationalRetrievalChain.from_llm(
             llm=cl_llm,
-            retriever=self.vector_store.as_retriever(
-                search_type=self.retriever_args.get("search_type"),
-                search_kwargs=self.retriever_args.get("search_args"),
+            retriever=vector_store.as_retriever(
+                search_type=retriever_args.get("search_type"),
+                search_kwargs=retriever_args.get("search_args"),
             ),
             # return_source_documents=True,
             memory=memory_chain,
@@ -120,7 +147,5 @@ class ChatBotModel:
         )
 
         # the LLMChain prompt to get the answer. the ConversationalRetrievalChange does not expose this parameter in the constructor
-        qa.combine_docs_chain.llm_chain.prompt = PromptTemplate.from_template(
-            self.prompt_template
-        )
+        qa.combine_docs_chain.llm_chain.prompt = prompt_template
         return qa
