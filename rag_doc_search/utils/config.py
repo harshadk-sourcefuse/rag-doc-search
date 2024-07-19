@@ -1,8 +1,9 @@
 import os
+
 from langchain.schema.embeddings import Embeddings
-from langchain.vectorstores.pgvector import PGVector
-from langchain.vectorstores.faiss import FAISS
 from langchain.schema.vectorstore import VectorStore
+from langchain.vectorstores.faiss import FAISS
+from langchain.vectorstores.pgvector import PGVector
 
 from rag_doc_search.src.enums.provider import AIProvider, VectorStoreProvider
 from rag_doc_search.src.enums.search_type import RetrieverSearchType
@@ -213,7 +214,9 @@ class Config:
         self._validate_and_initialize_ai_provider(config_json)
         self._validate_and_initialize_vector_store_provider(config_json)
         # self._validate_and_initialize_retriever_arguments(config_json)
-        self.retriever_args = self.validate_and_get_retriever_arguments(config_json.get("retriever", {}))
+        self.retriever_args = self.validate_and_get_retriever_arguments(
+            config_json.get("retriever", {})
+        )
 
         # Validate Embeddings model, llm, llm_temperature, and llm_max_output_tokens
         self.embeddings_model = config_json.get("embeddings_model", "")
@@ -289,4 +292,3 @@ class Config:
             case _:
                 self.logger.warning("Default case VectorStoreProvider")
         return vector_store
-

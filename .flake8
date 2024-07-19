@@ -1,0 +1,4 @@
+[flake8]
+select = F401, F841
+ignore = E203, E266, W503, E501
+exclude = .git, __pycache__, build, dist, .venv, venv

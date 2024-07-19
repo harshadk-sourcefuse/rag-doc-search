@@ -1,8 +1,10 @@
 """Callback handlers used in the app."""
+
 from typing import Any
-from rag_doc_search.src.models.chat_response import ChatResponse
 
 from langchain.callbacks.base import AsyncCallbackHandler
+
+from rag_doc_search.src.models.chat_response import ChatResponse
 
 
 class StreamingLLMCallbackHandler(AsyncCallbackHandler):

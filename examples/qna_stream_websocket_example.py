@@ -1,20 +1,14 @@
-import uvicorn
+import os
 
-from fastapi import (
-    FastAPI,
-    WebSocket,
-    WebSocketDisconnect,
-)
+import uvicorn
+from dotenv import load_dotenv
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosedOK
 
 from rag_doc_search import config_init, get_bot_instance
 from rag_doc_search.src.models.chat_response import ChatResponse
-
-from rag_doc_search.utils.miscellaneous import get_logger
 from rag_doc_search.utils.callback import StreamingLLMCallbackHandler
-
-from dotenv import load_dotenv
-import os 
+from rag_doc_search.utils.miscellaneous import get_logger
 
 root_path = "path to your env file"
 dotenv_path = os.path.join(root_path, ".env")

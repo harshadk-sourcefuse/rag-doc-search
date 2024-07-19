@@ -1,15 +1,14 @@
-import boto3
 import os
 
-from langchain_community.embeddings.bedrock import BedrockEmbeddings
-from langchain.llms.bedrock import Bedrock
-from langchain.schema.language_model import BaseLanguageModel
-from langchain.chains import RetrievalQA
-from langchain.chains import ConversationalRetrievalChain
+import boto3
+from langchain.chains import ConversationalRetrievalChain, RetrievalQA
 from langchain.prompts import PromptTemplate
+from langchain.schema.language_model import BaseLanguageModel
+from langchain_aws import ChatBedrock
+from langchain_community.embeddings.bedrock import BedrockEmbeddings
 
-from rag_doc_search.src.bot_models.chatbot_model import ChatBotModel
 from rag_doc_search import config
+from rag_doc_search.src.bot_models.chatbot_model import ChatBotModel
 from rag_doc_search.utils.callback import StreamingLLMCallbackHandler
 
 
@@ -66,7 +65,7 @@ class BedrockChatBot(ChatBotModel):
         Returns:
         An instance of RetrievalQA.
         """
-        cl_llm: BaseLanguageModel = Bedrock(
+        cl_llm: BaseLanguageModel = ChatBedrock(
             model_id=self.config.llm,
             client=self.boto3_bedrock,
             model_kwargs={
@@ -121,7 +120,7 @@ class BedrockChatBot(ChatBotModel):
         An instance of ConversationalRetrievalChain for conversational question-answering.
         """
         stream_manager = self.create_stream_manager(stream_handler, tracing)
-        cl_llm: BaseLanguageModel = Bedrock(
+        cl_llm: BaseLanguageModel = ChatBedrock(
             model_id=self.config.llm,
             client=self.boto3_bedrock,
             model_kwargs={
