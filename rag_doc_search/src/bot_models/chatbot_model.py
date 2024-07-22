@@ -1,19 +1,18 @@
-from langchain.prompts import PromptTemplate
-from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferWindowMemory
 from langchain.callbacks.manager import AsyncCallbackManager
 from langchain.callbacks.tracers import LangChainTracer
-from langchain.schema.vectorstore import VectorStore
-from langchain.schema.embeddings import Embeddings
+from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain.chains.retrieval_qa.base import RetrievalQA
+from langchain.memory import ConversationBufferWindowMemory
+from langchain.prompts import PromptTemplate
+from langchain.schema.embeddings import Embeddings
 from langchain.schema.language_model import BaseLanguageModel
+from langchain.schema.vectorstore import VectorStore
 
 from rag_doc_search.src.prompt_templates.default_prompt_templates import (
-    DEFAULT_PROMPT_TEMPLATE,
     DEFAULT_CHAT_HISTORY_PROMPT,
+    DEFAULT_PROMPT_TEMPLATE,
 )
-from rag_doc_search.utils.miscellaneous import get_chat_history
-from rag_doc_search.utils.miscellaneous import get_logger
+from rag_doc_search.utils.miscellaneous import get_chat_history, get_logger
 
 
 class ChatBotModel:
@@ -62,7 +61,7 @@ class ChatBotModel:
         Parameters:
         - `cl_llm`: An instance of LanguageModel such as OpenAI or Bedrock Model.
         - vector_store (VectorStore): The vector store used for retrieving documents.
-        - prompt_template (PromptTemplate, optional): Custom prompt template. 
+        - prompt_template (PromptTemplate, optional): Custom prompt template.
             If not provided, it will use DEFAULT_PROMPT_TEMPLATE from rag_doc_search.src.prompt_templates.default_prompt_templates.
 
         Returns:
@@ -90,7 +89,7 @@ class ChatBotModel:
             return_source_documents=True,
             chain_type_kwargs={
                 "prompt": prompt_template,
-            }
+            },
         )
         return qa
 
@@ -108,7 +107,7 @@ class ChatBotModel:
         Parameters:
         - `cl_llm`: An instance of LanguageModel such as OpenAI or Bedrock Model.
         - vector_store (VectorStore): The vector store used for retrieving documents.
-        - prompt_template (PromptTemplate, optional): Custom prompt template. 
+        - prompt_template (PromptTemplate, optional): Custom prompt template.
             If not provided, it will use DEFAULT_PROMPT_TEMPLATE from rag_doc_search.src.prompt_templates.default_prompt_templates.
 
         Returns:

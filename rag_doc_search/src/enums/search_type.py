@@ -10,6 +10,7 @@ class RetrieverSearchType(Enum):
     - `similarity`: Refers to the search type 'Similarity search retrieval'.
     - `similarity_score_threshold`: Refers to the search type 'Similarity score threshold retrieval'.
     """
+
     mmr = "mmr"
     similarity = "similarity"
     similarity_score_threshold = "similarity_score_threshold"

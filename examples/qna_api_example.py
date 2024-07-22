@@ -1,18 +1,12 @@
-import uvicorn
+import os
 
-from fastapi import (
-    FastAPI,
-    Body,
-    HTTPException,
-)
+import uvicorn
+from dotenv import load_dotenv
+from fastapi import Body, FastAPI, HTTPException
 
 from rag_doc_search import config_init, get_bot_instance
 from rag_doc_search.src.models.user_prompt import UserPrompt
-
 from rag_doc_search.utils.miscellaneous import get_logger
-
-from dotenv import load_dotenv
-import os 
 
 root_path = "path to your env file"
 dotenv_path = os.path.join(root_path, ".env")
@@ -44,5 +38,6 @@ async def process_prompt(payload: UserPrompt = Body()):
     except Exception as e:
         logger.error(f"{e}")
         raise HTTPException(status_code=500, detail=f"{e}")
+
 
 uvicorn.run(app, host="0.0.0.0", port=8000)

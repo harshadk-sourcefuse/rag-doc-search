@@ -1,12 +1,10 @@
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
-from langchain.schema.language_model import BaseLanguageModel
-from langchain.chains import RetrievalQA
-from langchain.chains import ConversationalRetrievalChain
+from langchain.chains import ConversationalRetrievalChain, RetrievalQA
 from langchain.prompts import PromptTemplate
+from langchain.schema.language_model import BaseLanguageModel
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-from rag_doc_search.src.bot_models.chatbot_model import ChatBotModel
 from rag_doc_search import config
+from rag_doc_search.src.bot_models.chatbot_model import ChatBotModel
 from rag_doc_search.utils.callback import StreamingLLMCallbackHandler
 
 

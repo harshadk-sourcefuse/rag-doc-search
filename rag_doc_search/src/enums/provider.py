@@ -9,6 +9,7 @@ class VectorStoreProvider(Enum):
     - `PGVector`: Refers to the PGVector provider.
     - `FAISS`: Refers to the FAISS provider.
     """
+
     PGVector = "PGVector"
     FAISS = "FAISS"
 
@@ -22,6 +23,7 @@ class AIProvider(Enum):
     - `AZURE_OPENAI`: Refers to the Azure OpenAI provider.
     - `BEDROCK`: Refers to the Bedrock provider.
     """
+
     OPENAI = "OPENAI"
     AZURE_OPENAI = "AZURE_OPENAI"
     BEDROCK = "BEDROCK"
