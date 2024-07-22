@@ -69,7 +69,7 @@ class BedrockChatBot(ChatBotModel):
             model_id=self.config.llm,
             client=self.boto3_bedrock,
             model_kwargs={
-                "max_tokens_to_sample": self.config.llm_max_output_tokens,
+                "max_tokens": self.config.llm_max_output_tokens,
                 "temperature": self.config.llm_temperature,
             },
         )
@@ -124,7 +124,7 @@ class BedrockChatBot(ChatBotModel):
             model_id=self.config.llm,
             client=self.boto3_bedrock,
             model_kwargs={
-                "max_tokens_to_sample": self.config.llm_max_output_tokens,
+                "max_tokens": self.config.llm_max_output_tokens,
                 "temperature": self.config.llm_temperature,
             },
             streaming=True,
